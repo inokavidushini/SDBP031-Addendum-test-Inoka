@@ -1,5 +1,8 @@
 
 using AgentAssignment.Server.Contracts;
+using AgentAssignment.Server.Data;
+using AgentAssignment.Server.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AgentAssignment.Server
 {
@@ -22,6 +25,10 @@ namespace AgentAssignment.Server
             // Expose the same service through the required interface.
             builder.Services.AddSingleton<IChatCompletionService>(
                 sp => sp.GetRequiredService<FoundryLocalChatCompletionService>());
+            // Register Entity Framework Core.
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddControllers();
 
@@ -29,6 +36,38 @@ namespace AgentAssignment.Server
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                db.Database.EnsureCreated();
+
+                if (!db.Employees.Any())
+                {
+                    db.Employees.AddRange(
+                        new Employee
+                        {
+                            Name = "Inoka Gamage",
+                            Department = "IT",
+                            Email = "Inoka@gmail.com"
+                        },
+                        new Employee
+                        {
+                            Name = "Vinod Fer",
+                            Department = "Finance",
+                            Email = "Vinod@gmail.com"
+                        },
+                        new Employee
+                        {
+                            Name = "Nusha Gamage",
+                            Department = "HR",
+                            Email = "Nushan@gmail.com"
+                        }
+                    );
+
+                    db.SaveChanges();
+                }
+            }
 
             // Get the same singleton instance registered above.
             var chatService =

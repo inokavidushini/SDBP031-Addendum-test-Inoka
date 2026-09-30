@@ -12,13 +12,16 @@ namespace AgentAssignment.Server
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            var port = builder.Configuration.GetValue<int?>("Server:Port") ?? 5080;
-
-            builder.WebHost.ConfigureKestrel(options =>
+            if (builder.Environment.IsDevelopment())
             {
-                options.ListenLocalhost(port);
-            });
 
+                var port = builder.Configuration.GetValue<int?>("Server:Port") ?? 5080;
+
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.ListenLocalhost(port);
+                });
+            }
             // Register the concrete Foundry Local service.
             builder.Services.AddSingleton<FoundryLocalChatCompletionService>();
 
@@ -70,24 +73,27 @@ namespace AgentAssignment.Server
             }
 
             // Get the same singleton instance registered above.
-            var chatService =
+            if (app.Environment.IsDevelopment())
+            {
+                var chatService =
                 app.Services.GetRequiredService<IChatCompletionService>();
 
-          
-            if (chatService is FoundryLocalChatCompletionService foundryService)
-            {
-                _ = Task.Run(async () =>
-            {
-                try
+
+                if (chatService is FoundryLocalChatCompletionService foundryService)
                 {
-                    await foundryService.EnsureStartedAsync();
-                }
-                catch (Exception ex)
+                    _ = Task.Run(async () =>
                 {
-                    Console.WriteLine(
-                        $"Foundry Local startup failed: {ex.Message}");
+                    try
+                    {
+                        await foundryService.EnsureStartedAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"Foundry Local startup failed: {ex.Message}");
+                    }
+                });
                 }
-            });
             }
 
             // Configure HTTP request pipeline.
